@@ -30,7 +30,7 @@ class WHIP {
   String? videoCodec;
   WHIP({required this.url, this.headers});
 
-  Future<void> initlize(
+  Future<void> initialized(
       {required WhipMode mode, MediaStream? stream, String? videoCodec}) async {
     initHttpClient();
     if (pc != null) {
@@ -45,7 +45,7 @@ class WHIP {
       'bundlePolicy': 'max-bundle',
       'rtcpMuxPolicy': 'require',
     });
-    pc?.onIceCandidate = onicecandidate;
+    pc?.onIceCandidate = onIceCandidate;
     pc?.onIceConnectionState = (state) {
       print('state: ${state.toString()}');
     };
@@ -73,7 +73,7 @@ class WHIP {
                 direction: TransceiverDirection.RecvOnly));
         break;
     }
-    log.debug('Initlize whip connection: mode = $mode, stream = ${stream?.id}');
+    log.debug('Initialized whip connection: mode = $mode, stream = ${stream?.id}');
     setState(WhipState.kInitialized);
   }
 
@@ -91,24 +91,24 @@ class WHIP {
       var offer = await pc!.getLocalDescription();
       final sdp = offer!.sdp;
       log.debug('Sending offer: $sdp');
-      var respose = await httpPost(Uri.parse(url),
+      var response = await httpPost(Uri.parse(url),
           headers: {
             'Content-Type': 'application/sdp',
             if (headers != null) ...headers!
           },
           body: sdp);
 
-      if (respose.statusCode != 200 && respose.statusCode != 201) {
-        throw Exception('Failed to send offer: ${respose.statusCode}');
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to send offer: ${response.statusCode}');
       }
 
       log.debug('Resource URL: $resourceURL');
-      final answer = RTCSessionDescription(respose.body, 'answer');
+      final answer = RTCSessionDescription(response.body, 'answer');
       log.debug('Received answer: ${answer.sdp}');
       await pc!.setRemoteDescription(answer);
       setState(WhipState.kConnected);
 
-      resourceURL = respose.headers['location'];
+      resourceURL = response.headers['location'];
       if (resourceURL == null) {
         resourceURL = url;
         log.warn('Resource url not found, use $url as resource url!');
@@ -145,19 +145,19 @@ class WHIP {
     setState(WhipState.kDisconnected);
   }
 
-  void onicecandidate(RTCIceCandidate? candidate) async {
+  void onIceCandidate(RTCIceCandidate? candidate) async {
     if (candidate == null || resourceURL == null) {
       return;
     }
     log.debug('Sending candidate: ${candidate.toMap().toString()}');
     try {
-      var respose = await httpPatch(Uri.parse(resourceURL!),
+      var response = await httpPatch(Uri.parse(resourceURL!),
           headers: {
             'Content-Type': 'application/trickle-ice-sdpfrag',
             if (headers != null) ...headers!
           },
           body: candidate.candidate);
-      log.debug('Received Patch response: ${respose.body}');
+      log.debug('Received Patch response: ${response.body}');
       // TODO(cloudwebrtc): Add remote candidate to local pc.
     } catch (e) {
       log.error('connect error: $e');
